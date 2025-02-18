@@ -39,7 +39,7 @@ def homepage():
     st.divider()
     
     with st.container():
-        sol1, sol2, sol3 = st.columns(3)
+        sol1, sol2 = st.columns(2)
         with sol1:
             st.markdown("### 🛠️ Function Calling Solution")
             st.markdown("""
@@ -50,22 +50,8 @@ def homepage():
 
             st.markdown("### Basic Implementation")
             if st.button("View Function Calling Demo", key="tools"):
-                st.switch_page("pages/tools.py")            
-            
+                st.switch_page("pages/tools.py")
         with sol2:
-            st.markdown("### 🔊 Real-Time Conversation")
-
-            st.markdown("""
-            - Audio-native model
-            - Accent adaptation engine  
-            - Dynamic speed detection  
-            - Instant spelling mode  
-            """)
-
-            st.markdown("### Enhanced Audio AI")
-            if st.button("Try Real-Time Model", key="realtime"):
-                st.switch_page("pages/realtime.py")
-        with sol3:
 
             st.markdown("### 📞 Phone call")
 

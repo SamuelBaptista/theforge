@@ -1,19 +1,54 @@
-# POC Python Realtime API o1 assistant
+# POC Python Voice Agents
 
+## Package manegement
+[Install uv](https://docs.astral.sh/uv/)
 
-## Setup
-- [Install uv](https://docs.astral.sh/uv/), 
-- Setup environment `cp .env.sample .env` add your `OPENAI_API_KEY`
-- Update `personalization.json` to fit your setup
+## Setup local realtime test
+- Setup environment `cp .env.sample .env` add your `OPENAI_API_KEY`.
+- Install dependencies `uv sync`
+- run `python realtime/local/push_to_talk.py`
+- If you want to change how the agent behavior, change the instructions in `realtime/local/prompt.py`
+
+## Setup Streamlit
+- Setup environment `cp .env.sample .env` add your keys:
+  - `OPENAI_API_KEY`
+  - `TWILIO_ACCOUNT_SID`
+  - `TWILIO_AUTH_TOKEN`
+  - `PHONE_NUMBER_FROM`
+- Install dependencies `uv sync`
+- If you want to test SMS messages, your twilio keys should be from a premium account
+- If you want to test phone calls, run `python realtime/api/call.py` to serve the api
+- Run `streamlit run server/home.py` 
+- To make the call, click the button in the home page.
+- To test the conversation capability and tool usage go to the `tools`page.
+- If you want to change how the agent behavior, change the instructions in `server/prompts/user_call.py`
+
+## Setup Realtime + Function Calling
+- Setup environment `cp .env.sample .env` add your `OPENAI_API_KEY`.
+- Update `config/personalization.json` to fit your setup
 - Install dependencies `uv sync`
 - Run the realtime assistant `uv run forge ` or `uv run forge  --prompts "Hello, how are you?"`
 
-## Configurations
 We decided to create a integration with telegram because its easy to use, we can send messages to the user in real time and its FREE!
 
 For now, those values are hard-code for the POC, but we can change it to a configuration file in the future.
 
 More informations on how to get the chat_id and the bot token, see [this link](https://gist.github.com/nafiesl/4ad622f344cd1dc3bb1ecbe468ff9f8a#get-chat-id-for-a-private-chat)
+
+
+### CLI Text Prompts
+You can also pass text prompts to the assistant via the CLI.
+Use '|' to separate prompts to chain commands.
+
+- `uv run forge  --prompts "Hello, how are you?"`
+
+
+### Tools Framework
+Tools are functions defined in `modules/tools.py` that extend the assistant's capabilities. These tools are mapped in `function_map` and are available for the assistant to perform actions based on user requests. The assistant uses these tools to execute specific tasks, enhancing its functionality and allowing for dynamic interactions.
+
+
+## Mock Database (sqlite and duckdb)
+- Reset sqlite `rm db/mock_sqlite.db && sqlite3 db/mock_sqlite.db < db/mock_data_for_sqlite.sql`
 
 ```python
 ```shell
@@ -147,40 +182,3 @@ Below you'll find a comparison of these prototypes along with their respective p
 - **Streamlit + OpenAI** → Best for POCs and **non-real-time prototypes**.  
 - **Twilio Streaming** → Ideal for **real-time voice applications** but **expensive**.  
 - **Custom API + Functions** → Best for **full control and scalability**, but requires **heavy engineering effort**.  
-
-
-
----
-### CLI Text Prompts
-You can also pass text prompts to the assistant via the CLI.
-Use '|' to separate prompts to chain commands.
-
-- `uv run forge  --prompts "Hello, how are you?"`
-
-## Code Breakdown
-
-### Code Organization
-The codebase is organized within the `src/realtime_api_async` directory. The application is modularized, with core functionality divided into separate Python modules located in the `modules/` directory.
-
-### Important Files and Directories
-- **`main.py`**: This is the entry point of the application. It sets up the WebSocket connection, handles audio input/output, and manages the interaction between the user and the AI assistant.
-- **`modules/` Directory**: Contains various modules handling different functionalities of the assistant:
-  - `audio.py`: Handles audio playback, including adding silence padding to prevent audio clipping.
-  - `async_microphone.py`: Manages asynchronous audio input from the microphone.
-  - `database.py`: Provides database interfaces for different SQL dialects (e.g., SQLite, DuckDB, PostgreSQL) and executes SQL queries.
-  - `llm.py`: Interfaces with language models, including functions for structured output parsing and chat prompts.
-  - `logging.py`: Configures logging for the application using Rich for formatted and colorful logs.
-  - `memory_management.py`: Manages the assistant's memory with operations to create, read, update, and delete memory entries.
-  - `tools.py`: Contains definitions of tools and functions that the assistant can use to perform various actions.
-  - `utils.py`: Provides utility functions used across the application, such as timing decorators, model enumerations, audio configurations, and helper methods.
-- **`active_memory.json`**: Stores the assistant's active memory state, allowing it to persist information between interactions.
-- **`personalization.json`**: Contains configuration settings used to personalize the assistant's behavior.
-- **`db/` Directory**: Holds mock database files and SQL scripts for testing database functionalities.
-
-
-### Tools Framework
-Tools are functions defined in `modules/tools.py` that extend the assistant's capabilities. These tools are mapped in `function_map` and are available for the assistant to perform actions based on user requests. The assistant uses these tools to execute specific tasks, enhancing its functionality and allowing for dynamic interactions.
-
-
-## Mock Database (sqlite and duckdb)
-- Reset sqlite `rm db/mock_sqlite.db && sqlite3 db/mock_sqlite.db < db/mock_data_for_sqlite.sql`
