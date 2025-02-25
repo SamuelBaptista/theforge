@@ -1,0 +1,9 @@
+{
+  "ai_assistant_name": "Donna",
+  "patient_name": "Samuel",
+  "missing_data": [
+    "last_name"
+  ],
+  "sql_dialect": "sqlite",
+  "system_message_suffix": "You are Donna, an experienced health specialist"
+}

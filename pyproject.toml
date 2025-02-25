@@ -1,0 +1,47 @@
+[project]
+name = "theforge"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "websockets==13.1",
+    "openai>=1.51.0",
+    "pyaudio>=0.2.14",
+    "numpy>=2.1.1",
+    "pydantic>=2.9.2",
+    "pytest-asyncio>=0.24.0",
+    "pyperclip>=1.9.0",
+    "pillow>=10.4.0",
+    "pandas>=2.2.3",
+    "psycopg2-binary>=2.9.9",
+    "duckdb>=1.1.2",
+    "matplotlib>=3.9.2",
+    "streamlit>=1.42.0",
+    "textual",
+    "pydub",
+    "sounddevice",
+    "openai[realtime]",
+    "twilio>=9.4.5",
+    "fastapi>=0.115.8",
+    "uvicorn>=0.34.0",
+    "python-dotenv>=1.0.1",
+    "ngrok>=1.4.0",
+    "ipykernel>=6.29.5",
+    "repenseai>=3.0.2",
+    "rich>=13.9.2",
+    "psycopg2-binary>=2.9.9",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["realtime"]
+
+[project.scripts]
+forge = "realtime.forge.main:main"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
