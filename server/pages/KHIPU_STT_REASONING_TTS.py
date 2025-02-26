@@ -138,7 +138,10 @@ cols = st.columns(2)
 
 st.divider()
 st.write("### Task - Debuguer")
-st.write(st.session_state.task.prompt)
+
+user_messages = [m['content'] for m in st.session_state.task.prompt if m['role'] == 'user']
+
+st.write(user_messages[-1])
 st.write(st.session_state.response)
 
 if cols[1].button("Reset", use_container_width=True, type='primary'):
@@ -179,7 +182,7 @@ if cols[0].button("Run", use_container_width=True) or st.session_state.run:
 
         save_audio_to_disk(
             full_audio, 
-            f"assets/audios/{st.session_state.name}_{st.session_state.country}_{str(uuid.uuid4())}.wav"
+            f"server/assets/audios/{st.session_state.name}_{st.session_state.country}_{str(uuid.uuid4())}.wav"
         )
 
         st.write("### End of the conversation")
