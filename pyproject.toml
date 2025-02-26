@@ -28,7 +28,7 @@ dependencies = [
     "python-dotenv>=1.0.1",
     "ngrok>=1.4.0",
     "ipykernel>=6.29.5",
-    "repenseai>=3.0.2",
+    "repenseai==4.0.2",
     "rich>=13.9.2",
     "psycopg2-binary>=2.9.9",
 ]

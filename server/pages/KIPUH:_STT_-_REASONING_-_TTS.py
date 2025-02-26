@@ -1,24 +1,21 @@
-import os
 import time
 import json
+import io
+import uuid
 
 import streamlit as st
 
-from twilio.rest import Client
-
-from openai import OpenAI
 from pydantic import BaseModel
+from pydub import AudioSegment
 
 from repenseai.genai.agent import Agent
 from repenseai.genai.tasks.api import Task
 
-from difflib import SequenceMatcher
-
-from prompts.user_call import instruction, template
+from server.prompts.user_call_no_tools import instruction
 
 
 st.set_page_config(
-    page_title="Tool Usage Demo",
+    page_title="KIPUH - STT, Reasoning, TTS",
     layout="centered",
     initial_sidebar_state="auto"
 )
@@ -26,49 +23,33 @@ st.set_page_config(
 
 # FUNCTIONS
 
-def send_sms(text: str, to: str):
+def combine_audio_segments(audio_segments: list):
+    combined_audio = AudioSegment.empty()
+    
+    for segment in audio_segments:
+        audio = AudioSegment.from_file(io.BytesIO(segment), format="wav")
+        combined_audio += audio
+    
+    return combined_audio
 
-    account_sid = os.getenv("TWILIO_ACCOUNT_SID")
-    auth_token = os.getenv("TWILIO_AUTH_TOKEN")
-
-    client = Client(account_sid, auth_token)
-
-    message = client.messages.create(
-        from_='+19787634376',
-        body=text,
-        to=to
-    )
-
-    return message
-
-def calculate_similarity(text: str, country: str):
-    similarity_scores = {}
-
-    names = {
-        "Brazil": ["Baptista", "Gouveia", "Souza", "Silva", "Santos"],
-        "Argentina": ["Gonzalez", "Rodriguez", "Gomez", "Fernandez", "Lopez", "Matteoda"],
-    }
-
-    for name in names[country]:
-
-        score = SequenceMatcher(None, text, name).ratio()
-        similarity_scores[name] = score
-
-    sorted_scores = dict(sorted(similarity_scores.items(), key=lambda item: item[1], reverse=True))
-    return sorted_scores
+def save_audio_to_disk(audio: AudioSegment, file_path: str):
+    audio.export(file_path, format="wav")
 
 def generate_voice(text: str):
-    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-    tts_response = client.audio.speech.create(
-        model="tts-1-hd",
+    agent = Agent(
+        model="tts-1-hd", 
+        model_type="speech",
         voice="shimmer",
-        input=text,
-        response_format="wav",
-        speed=1.0,
     )
 
-    return tts_response.content
+    task = Task(
+        agent=agent,
+        speech_key="speech",
+        simple_response=True
+    )
+
+    response = task.run({"speech": text})
+    return response
 
 def get_trascription(audio: bytes):
     t_agent = Agent(model="whisper-1", model_type="audio")
@@ -86,17 +67,13 @@ st.divider()
 cols = st.columns(2)
 
 with cols[0]:
-    st.markdown("""
-  - Speed, accent, tone, and emotional inflection are fixed during voice generation (no real-time adjustments).   
-  - Enables text editing, contextual analysis, and logic refinement between transcription and LLM steps.  
-  - Allows error correction, fact-checking, or adding structured data (e.g., translations, summaries).  
-  - Sequential processing introduces delays but supports complex, layered workflows.  
-  - Ideal for content-heavy tasks requiring reasoning (e.g., customer service analysis, report generation).    
-  - **Transcription System**: Prioritizes reasoning and content manipulation at the cost of audio customization.  
-  """)
+    st.markdown("Let's test if our model can get your last name!")
+
+    name = st.text_input("Enter your name")
+    country = st.text_input("Enter your country")
 
 with cols[1]:
-    st.image("server/assets/tool_usage.png", width=300)
+    st.image("server/assets/STT-Reasoning-TTS.png", width=300)
 
 # PAGE
 
@@ -108,15 +85,11 @@ if "task" not in st.session_state:
 
     agent = Agent(
         model="gpt-4o", 
-        model_type="chat", 
-        tools=[send_sms, calculate_similarity],
-        # json_mode=True,
-        # json_schema=LLMResponse,
+        model_type="chat",
     )
 
     task = Task(
-        instruction=instruction,
-        prompt_template=template,
+        user=instruction,
         agent=agent, 
         simple_response=True,
     )
@@ -142,41 +115,13 @@ if "audio" not in st.session_state:
     st.session_state.audio = None
 
 if "end" not in st.session_state:
-    st.session_state.end = False    
+    st.session_state.end = False
 
+if 'name' not in st.session_state:
+    st.session_state.name = None
 
-cases = [
-    {
-        "user_data": {
-            "name": "Samuel",
-            "phone": "+5519999872145",
-            "email": "s.johnson@email.com",
-            "dob": "1988-11-13",
-            "country": "Brazil"
-        },
-        'missing_data': "last name"
-    },
-    {
-        "user_data": {
-            "name": "Ramiro",
-            "phone": "+5519999872145",
-            "email": "r.mat@gmail.com",
-            "dob": "1988-11-13",
-            "country": "Argentina"
-        },
-        'missing_data': "last name"
-    },
-]
-
-index = st.selectbox(
-    "Select a case",
-    [
-        f"{i+1} - {case['user_data']['name']}" 
-        for i, case in enumerate(cases)
-    ]
-)
-
-selected_case = cases[int(index.split(" - ")[0]) - 1]
+if 'country' not in st.session_state:
+    st.session_state.country = None
 
 cols = st.columns(2)
 
@@ -195,6 +140,9 @@ if cols[1].button("Reset", use_container_width=True, type='primary'):
 if cols[0].button("Run", use_container_width=True) or st.session_state.run:
     st.session_state.run = True
 
+    st.session_state.name = name
+    st.session_state.country = country
+
     st.divider()
 
     if st.session_state.assistant and not st.session_state.turn:
@@ -207,6 +155,15 @@ if cols[0].button("Run", use_container_width=True) or st.session_state.run:
             
         time.sleep(12)
 
+        final_chat = []
+
+        for u, a in zip(st.session_state.user, st.session_state.assistant):
+            final_chat.append(u.read())
+            final_chat.append(a)
+
+        full_audio = combine_audio_segments(final_chat)
+        save_audio_to_disk(full_audio, f"assets/audios/{st.session_state.name}_{str(uuid.uuid4())}.wav")
+
         st.write("### End of the conversation")
         st.write("Thank you for participating in this demo.")
         
@@ -216,7 +173,15 @@ if cols[0].button("Run", use_container_width=True) or st.session_state.run:
 
     if st.session_state.turn:
 
-        response = st.session_state.task.run(selected_case)
+        context = {
+            "user_data": {
+                "name": st.session_state.name,
+                "country": st.session_state.country
+            },
+            "missing_data": "last name"
+        }
+
+        response = st.session_state.task.run(context)
         try:
             st.session_state.response = json.loads(response)
         except TypeError:
