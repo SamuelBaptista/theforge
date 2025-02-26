@@ -31,6 +31,7 @@ dependencies = [
     "repenseai==4.0.2",
     "rich>=13.9.2",
     "psycopg2-binary>=2.9.9",
+    "ffmpeg-python>=0.2.0",
 ]
 
 [build-system]
