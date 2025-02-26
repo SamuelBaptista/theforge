@@ -27,16 +27,15 @@ st.set_page_config(
 def combine_audio_segments(audio_segments: list):
     combined_audio = AudioSegment.empty()
     
-    for i, segment in enumerate(audio_segments):
-        if i % 2 == 0 or i == 0:
+    for segment in audio_segments:
+        if isinstance(segment, bytes):
             audio_file = io.BytesIO(segment)
-
             audio = AudioSegment.from_file(audio_file)
-            combined_audio += audio
         else:
             audio = AudioSegment(data=segment, sample_width=2, frame_rate=44100, channels=2)
-            combined_audio += audio + AudioSegment.silent(duration=1000)
-    
+        
+        combined_audio += audio
+
     return combined_audio
 
 def save_audio_to_disk(audio: AudioSegment, file_path: str):
@@ -172,9 +171,9 @@ if cols[0].button("Run", use_container_width=True) or st.session_state.run:
         final_chat = []
 
         for u, a in zip(st.session_state.user, st.session_state.assistant):
-            final_chat.append(u)
             final_chat.append(a)
-
+            final_chat.append(u)
+            
         final_chat.append(st.session_state.assistant[-1])
         full_audio = combine_audio_segments(final_chat)
 
