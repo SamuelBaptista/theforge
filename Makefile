@@ -16,7 +16,7 @@ unlock_db:
 
 
 app:
-	streamlit run server/home.py
+	streamlit run server/KHIPU_STT_REASONING_TTS.py
 
 api:
 	python realtime/call.py

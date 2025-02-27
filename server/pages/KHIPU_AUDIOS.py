@@ -15,6 +15,9 @@ st.divider()
 # Path to audios directory
 audio_dir = "server/assets/audios"
 
+if not os.path.exists(audio_dir):
+    os.makedirs(audio_dir)
+
 # Get all .wav files from the directory
 audio_files = [f for f in os.listdir(audio_dir) if f.endswith('.wav')]
 

@@ -139,9 +139,9 @@ cols = st.columns(2)
 st.divider()
 st.write("### Task - Debuguer")
 
-user_messages = [m['content'] for m in st.session_state.task.prompt if m['role'] == 'user']
+# user_messages = [m['content'] for m in st.session_state.task.prompt if m['role'] == 'user']
 
-st.write(user_messages[-1])
+st.write(st.session_state.task.prompt)
 st.write(st.session_state.response)
 
 if cols[1].button("Reset", use_container_width=True, type='primary'):
