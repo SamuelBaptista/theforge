@@ -12,8 +12,8 @@ from pydub import AudioSegment
 from repenseai.genai.agent import Agent
 from repenseai.genai.tasks.api import Task
 
-from server.prompts.user_call_no_tools import instruction
-
+from server.prompts.user_call_no_tools import NAME_CHECK
+from server.prompts.evaluation import EVALUATION
 
 st.set_page_config(
     page_title="KIPUH - STT, Reasoning, TTS",
@@ -23,6 +23,48 @@ st.set_page_config(
 
 
 # FUNCTIONS
+
+def evaluate_assistant_output(conversation: list, target_name: str):
+    # agent = Agent(
+    #     model="gpt-4.5-preview", 
+    #     model_type="chat",
+    #     provider="openai",
+    #     price={'input': 75.00, 'output': 150.00}
+    # )
+
+    agent = Agent(
+        model="gpt-4o",
+        model_type="chat",
+    )    
+
+    task = Task(
+        user=EVALUATION,
+        agent=agent,
+        simple_response=True
+    )
+
+    response = task.run({"last_name": target_name, "conversation": conversation})
+    return response
+
+def save_evaluation_to_disk(evaluation: str, language: str):
+
+    file_path = f"server/assets/evaluation/{language}.json"
+    directory = os.path.dirname(file_path)
+    os.makedirs(directory, exist_ok=True)
+
+    if os.path.exists(file_path):
+        with open(file_path, "r") as file:
+            data = json.load(file)
+    else:
+        data = []
+
+    evaluation_json = json.loads(evaluation.replace("```json\n", "").replace("```", ""))
+    evaluation_json['name'] = st.session_state.name
+    data.append(evaluation_json)
+
+    with open(file_path, "w") as file:
+        json.dump(data, file, indent=4)
+
 
 def combine_audio_segments(audio_segments: list):
     combined_audio = AudioSegment.empty()
@@ -39,12 +81,19 @@ def combine_audio_segments(audio_segments: list):
     return combined_audio
 
 def save_audio_to_disk(audio: AudioSegment, file_path: str):
-    # Ensure the directory exists
+
     directory = os.path.dirname(file_path)
     os.makedirs(directory, exist_ok=True)
-    
-    # Save the audio file
+
     audio.export(file_path, format="wav")
+
+def save_prompt_to_disk(prompt: dict | list, file_path: str):
+
+    directory = os.path.dirname(file_path)
+    os.makedirs(directory, exist_ok=True)
+
+    with open(file_path, "w") as file:
+        json.dump(prompt, file)
 
 def generate_voice(text: str):
     agent = Agent(
@@ -75,16 +124,31 @@ def get_trascription(audio: bytes):
 st.title("Tool Usage Demo")
 st.divider()
 
+names = [
+    "Samuel Baptista",
+    "Nacho Orlando",
+    "Felipe Gouveia",
+    "Samuel Heinrichs",
+    "Nati Vallejo",
+    "Martin Bouza",
+]
+
+languages = [
+    "Portuguese",
+    "Spanish",
+    "English",
+    "German",
+    "French",
+    "Italian",
+]
+
 cols = st.columns(2)
 
 with cols[0]:
-    st.markdown("Let's test if our model can get your last name!")
-
-    name = st.text_input("Enter your name")
-    country = st.text_input("Enter your country")
+    name = st.selectbox("Select a name to test the tool.", names)
 
 with cols[1]:
-    st.image("server/assets/STT-Reasoning-TTS.png", width=300)
+    language = st.selectbox("Select the your native language.", languages)
 
 # PAGE
 
@@ -100,7 +164,7 @@ if "task" not in st.session_state:
     )
 
     task = Task(
-        user=instruction,
+        user=NAME_CHECK,
         agent=agent, 
         simple_response=True,
     )
@@ -131,25 +195,29 @@ if "end" not in st.session_state:
 if 'name' not in st.session_state:
     st.session_state.name = None
 
-if 'country' not in st.session_state:
+if 'language' not in st.session_state:
     st.session_state.country = None
 
 cols = st.columns(2)
 
 st.divider()
-st.write("### Task - Debuguer")
+st.write("### Chat Transcription")
 
-# user_messages = [m['content'] for m in st.session_state.task.prompt if m['role'] == 'user']
+if st.session_state.task.prompt:
+    for i, message in enumerate(st.session_state.task.prompt):
+        if i == 0:
+            continue
 
-st.write(st.session_state.task.prompt)
-st.write(st.session_state.response)
+        with st.chat_message(message['role']):
+            if message['role'] == "assistant":
+                content = json.loads(message['content'])
+                st.write(content['message'])
+            else:
+                st.write(message['content'])
 
 if cols[1].button("Reset", use_container_width=True, type='primary'):
-    st.session_state.run = False
-
     for key in st.session_state:
-        if key not in ["task", "run"]:
-            del st.session_state[key]
+        del st.session_state[key]
 
     st.rerun()
 
@@ -157,10 +225,10 @@ if cols[0].button("Run", use_container_width=True) or st.session_state.run:
     st.session_state.run = True
 
     st.session_state.name = name
-    st.session_state.country = country
+    st.session_state.language = language
 
     st.divider()
-
+    st.write("### Audio")
     if st.session_state.assistant and not st.session_state.turn:
         with st.chat_message("assistant"):
             st.audio(st.session_state.assistant[-1], autoplay=True)    
@@ -180,10 +248,28 @@ if cols[0].button("Run", use_container_width=True) or st.session_state.run:
         final_chat.append(st.session_state.assistant[-1])
         full_audio = combine_audio_segments(final_chat)
 
+        file_name = st.session_state.name.replace(" ", "_")
+        file_id = str(uuid.uuid4())
+
         save_audio_to_disk(
             full_audio, 
-            f"server/assets/audios/{st.session_state.name}_{st.session_state.country}_{str(uuid.uuid4())}.wav"
+            f"server/assets/audios/{file_name}_{st.session_state.language}_{file_id}.wav"
         )
+
+        save_prompt_to_disk(
+            st.session_state.task.prompt[1:],
+            f"server/assets/transcriptions/{file_name}_{st.session_state.language}_{file_id}.json"
+        )
+
+        st.write("### Evaluation")
+
+        evaluation = evaluate_assistant_output(
+            st.session_state.task.prompt[2:], 
+            st.session_state.name.split(" ")[-1]
+        )
+
+        st.write(evaluation)
+        save_evaluation_to_disk(evaluation, st.session_state.language)
 
         st.write("### End of the conversation")
         st.write("Thank you for participating in this demo.")
@@ -196,8 +282,7 @@ if cols[0].button("Run", use_container_width=True) or st.session_state.run:
 
         context = {
             "user_data": {
-                "name": st.session_state.name,
-                "country": st.session_state.country
+                "name": st.session_state.name.split(" ")[0],
             },
             "missing_data": "last name"
         }
@@ -224,8 +309,6 @@ if cols[0].button("Run", use_container_width=True) or st.session_state.run:
 
         voice = generate_voice(st.session_state.response['message'])
         st.session_state.assistant.append(voice)
-
-        st.session_state.task.prompt.append({"role": "assistant", "content": st.session_state.response['message']})
 
         st.session_state.turn = False
         st.rerun()
