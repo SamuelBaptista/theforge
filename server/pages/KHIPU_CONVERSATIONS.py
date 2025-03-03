@@ -2,7 +2,13 @@ import os
 import io
 import zipfile
 import json
+
 import streamlit as st
+
+
+if not st.session_state.get('authenticated', False):
+    st.warning("Please login at the login page")
+    st.stop()
 
 st.set_page_config(
     page_title="KIPUH - Saved Audios",
@@ -13,11 +19,47 @@ st.set_page_config(
 st.title("Saved Conversations")
 st.divider()
 
+# Add download button for all files
+def create_zip_of_all_files():
+    audio_dir = "server/assets/audios"
+    transcription_dir = "server/assets/transcriptions"
+    evaluation_dir = "server/assets/evaluations"
+    
+    # Create a BytesIO object to store the zip file
+    zip_buffer = io.BytesIO()
+    
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+        # Add audio files
+        if os.path.exists(audio_dir):
+            for file in os.listdir(audio_dir):
+                if file.endswith('.wav'):
+                    file_path = os.path.join(audio_dir, file)
+                    zip_file.write(file_path, os.path.join("audios", file))
+        
+        # Add transcription files
+        if os.path.exists(transcription_dir):
+            for file in os.listdir(transcription_dir):
+                if file.endswith('.json'):
+                    file_path = os.path.join(transcription_dir, file)
+                    zip_file.write(file_path, os.path.join("transcriptions", file))
+
+        # Add evaluation files
+        if os.path.exists(evaluation_dir):
+            for file in os.listdir(evaluation_dir):
+                if file.endswith('.json'):
+                    file_path = os.path.join(evaluation_dir, file)
+                    zip_file.write(file_path, os.path.join("evaluation", file))
+    
+    return zip_buffer.getvalue()
+
 st.header("Audios")
 audio_dir = "server/assets/audios"
+transcription_dir = "server/assets/transcriptions"
 
 if not os.path.exists(audio_dir):
     os.makedirs(audio_dir)
+if not os.path.exists(transcription_dir):
+    os.makedirs(transcription_dir)
 
 # Get all .wav files from the directory
 audio_files = [f for f in os.listdir(audio_dir) if f.endswith('.wav')]
@@ -32,97 +74,41 @@ else:
         display_name = f"{i} - Name: {first_name} {last_name} - Accent: {accent}"
         audio_options[display_name] = audio_file
     
-    # Create select box
-    selected_audio = st.selectbox(
-        "Select a conversation to play",
-        options=list(audio_options.keys())
-    )
+    # Create a selectbox for the user to choose an audio file
+    selected_display_name = st.selectbox("Select an audio file:", list(audio_options.keys()))
+    selected_audio_file = audio_options[selected_display_name]
     
-    # Display selected audio
-    if selected_audio:
-        audio_file = audio_options[selected_audio]
+    # Display the audio file
+    audio_path = os.path.join(audio_dir, selected_audio_file)
+    st.audio(audio_path)
+    
+    # Get corresponding transcription file
+    transcription_file = selected_audio_file.replace('.wav', '.json')
+    transcription_path = os.path.join(transcription_dir, transcription_file)
+    
+    # Check if transcription exists and display it in an expander
+    if os.path.exists(transcription_path):
+        with open(transcription_path, 'r') as f:
+            transcription_text = json.loads(f.read())
         
-        with st.container():
-            
-            audio_path = os.path.join(audio_dir, audio_file)
-            
-            with open(audio_path, 'rb') as audio_file:
-                audio_bytes = audio_file.read()
-                st.audio(audio_bytes)
-
-    # Create a ZIP file in memory
-    zip_buffer = io.BytesIO()
-    with zipfile.ZipFile(zip_buffer, 'w') as zip_file:
-        for audio_file in os.listdir(audio_dir):
-            if audio_file.endswith('.wav'):
-                file_path = os.path.join(audio_dir, audio_file)
-                zip_file.write(file_path, audio_file)
-    
-    # Create the download button
-    st.download_button(
-        label="Click to Download All Audio Files", 
-        data=zip_buffer.getvalue(),
-        file_name="all_audio_files.zip",
-        mime="application/zip"
-    )
-
-st.divider()
-
-st.header("Transcriptions")
-transcription_dir = "server/assets/transcriptions"
-
-if not os.path.exists(transcription_dir):
-    os.makedirs(transcription_dir)
-
-# Get all .txt files from the directory
-transcription_files = [f for f in os.listdir(transcription_dir) if f.endswith('.json')]
-
-if not transcription_files:
-    st.info("No transcription files found in the directory.")
-else:
-    # Create a dictionary mapping display names to filenames
-    transcription_options = {}
-    for i, transcription_file in enumerate(transcription_files):
-        first_name, last_name, accent, _ = transcription_file.rsplit('_', 3)
-        display_name = f"{i} - Name: {first_name} {last_name} - Accent: {accent}"
-        transcription_options[display_name] = transcription_file
-    
-    # Create select box
-    selected_transcription = st.selectbox(
-        "Select a conversation to view",
-        options=list(transcription_options.keys())
-    )
-    
-    # Display selected transcription
-    if selected_transcription:
-        transcription_file = transcription_options[selected_transcription]
-        transcription_path = os.path.join(transcription_dir, transcription_file)
-            
-        with open(transcription_path, 'rb') as file:
-            transcription_json = json.loads(file.read())
-        
-        if transcription_json:
-            for i, message in enumerate(transcription_json):
+        with st.popover("Show Transcription"):
+            for message in transcription_text:
                 with st.chat_message(message['role']):
                     if message['role'] == "assistant":
                         content = json.loads(message['content'])
                         st.write(content['message'])
                     else:
                         st.write(message['content'])
+    else:
+        st.warning(f"No transcription found for {selected_audio_file}")
 
-    # Create a ZIP file in memory
-    zip_buffer = io.BytesIO()
-    with zipfile.ZipFile(zip_buffer, 'w') as zip_file:
-        for transcription_file in os.listdir(transcription_dir):
-            if transcription_file.endswith('.json'):
-                file_path = os.path.join(transcription_dir, transcription_file)
-                zip_file.write(file_path, transcription_file)
-    
-    # Create the download button
-    st.download_button(
-        label="Click to Download All Transcription Files", 
-        data=zip_buffer.getvalue(),
-        file_name="all_transcription_files.zip",
-        mime="application/zip"
-    )
+st.divider()
 
+# Add download button at the top
+zip_data = create_zip_of_all_files()
+st.download_button(
+    label="Download Files",
+    data=zip_data,
+    file_name="khipu_conversations.zip",
+    mime="application/zip"
+)

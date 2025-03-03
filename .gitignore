@@ -1,6 +1,7 @@
 # assets
 server/assets/audios/
 server/assets/transcriptions/
+server/assets/evaluation/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

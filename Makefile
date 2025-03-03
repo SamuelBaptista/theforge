@@ -14,9 +14,8 @@ refresh_db:
 unlock_db:
 	chmod 777 ./db/mock_sqlite.db
 
-
 app:
-	streamlit run server/KHIPU_STT_REASONING_TTS.py
+	streamlit run server/LOGIN.py
 
 api:
 	python realtime/call.py

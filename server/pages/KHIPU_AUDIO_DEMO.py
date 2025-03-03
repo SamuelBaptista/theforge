@@ -15,6 +15,11 @@ from repenseai.genai.tasks.api import Task
 from server.prompts.user_call_no_tools import NAME_CHECK
 from server.prompts.evaluation import EVALUATION
 
+
+if not st.session_state.get('authenticated', False):
+    st.warning("Please login at the login page")
+    st.stop()
+
 st.set_page_config(
     page_title="KIPUH - STT, Reasoning, TTS",
     layout="centered",
@@ -121,7 +126,7 @@ def get_trascription(audio: bytes):
 
 # INTRO
 
-st.title("Tool Usage Demo")
+st.title("Conversational AI Demo")
 st.divider()
 
 names = [
@@ -200,10 +205,11 @@ if 'language' not in st.session_state:
 
 cols = st.columns(2)
 
-st.divider()
-st.write("### Chat Transcription")
-
 if st.session_state.task.prompt:
+
+    st.divider()
+    st.write("### Chat Transcription")  
+
     for i, message in enumerate(st.session_state.task.prompt):
         if i == 0:
             continue
