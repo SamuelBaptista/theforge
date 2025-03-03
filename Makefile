@@ -20,3 +20,7 @@ app:
 api:
 	python realtime/call.py
 
+remove:
+	rm -rf server/assets/audios
+	rm -rf server/assets/evaluation
+	rm -rf server/assets/transcriptions

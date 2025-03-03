@@ -30,12 +30,6 @@ st.set_page_config(
 # FUNCTIONS
 
 def evaluate_assistant_output(conversation: list, target_name: str):
-    # agent = Agent(
-    #     model="gpt-4.5-preview", 
-    #     model_type="chat",
-    #     provider="openai",
-    #     price={'input': 75.00, 'output': 150.00}
-    # )
 
     agent = Agent(
         model="gpt-4o",
@@ -130,12 +124,12 @@ st.title("Conversational AI Demo")
 st.divider()
 
 names = [
-    "Samuel Baptista",
-    "Nacho Orlando",
-    "Felipe Gouveia",
-    "Samuel Heinrichs",
-    "Nati Vallejo",
-    "Martin Bouza",
+    "Baptista",
+    "Orlando",
+    "Gouveia",
+    "Heinrichs",
+    "Vallejo",
+    "Bouza",
 ]
 
 languages = [
@@ -197,11 +191,17 @@ if "audio" not in st.session_state:
 if "end" not in st.session_state:
     st.session_state.end = False
 
+if "save" not in st.session_state:
+    st.session_state.save = True    
+
 if 'name' not in st.session_state:
     st.session_state.name = None
 
 if 'language' not in st.session_state:
     st.session_state.country = None
+
+if 'evaluation' not in st.session_state:
+    st.session_state.evaluation = None    
 
 cols = st.columns(2)
 
@@ -216,13 +216,18 @@ if st.session_state.task.prompt:
 
         with st.chat_message(message['role']):
             if message['role'] == "assistant":
-                content = json.loads(message['content'])
-                st.write(content['message'])
+                try:
+                    content = json.loads(message['content'])
+                    st.write(content['message'])
+                except json.JSONDecodeError:
+                    st.write(message['content'])
             else:
                 st.write(message['content'])
 
 if cols[1].button("Reset", use_container_width=True, type='primary'):
     for key in st.session_state:
+        if key == "authenticated":
+            continue
         del st.session_state[key]
 
     st.rerun()
@@ -240,56 +245,62 @@ if cols[0].button("Run", use_container_width=True) or st.session_state.run:
             st.audio(st.session_state.assistant[-1], autoplay=True)    
 
     if st.session_state.end:
-        with st.chat_message("assistant"):
-            st.audio(st.session_state.assistant[-1], autoplay=True)
-            
-        time.sleep(12)
+        if not st.session_state.save:
+            with st.chat_message("assistant"):
+                st.audio(st.session_state.assistant[-1], autoplay=False)
+                st.write("### Evaluation")
+                st.write(st.session_state.evaluation)
+            st.stop()
+        else:
+            with st.chat_message("assistant"):
+                st.audio(st.session_state.assistant[-1], autoplay=True)  
 
-        final_chat = []
+            time.sleep(12)
 
-        for u, a in zip(st.session_state.user, st.session_state.assistant):
-            final_chat.append(a)
-            final_chat.append(u)
-            
-        final_chat.append(st.session_state.assistant[-1])
-        full_audio = combine_audio_segments(final_chat)
+            final_chat = []
 
-        file_name = st.session_state.name.replace(" ", "_")
-        file_id = str(uuid.uuid4())
+            for u, a in zip(st.session_state.user, st.session_state.assistant):
+                final_chat.append(a)
+                final_chat.append(u)
+                
+            final_chat.append(st.session_state.assistant[-1])
+            full_audio = combine_audio_segments(final_chat)
 
-        save_audio_to_disk(
-            full_audio, 
-            f"server/assets/audios/{file_name}_{st.session_state.language}_{file_id}.wav"
-        )
+            file_name = st.session_state.name.replace(" ", "_")
+            file_id = str(uuid.uuid4())
 
-        save_prompt_to_disk(
-            st.session_state.task.prompt[1:],
-            f"server/assets/transcriptions/{file_name}_{st.session_state.language}_{file_id}.json"
-        )
+            save_audio_to_disk(
+                full_audio, 
+                f"server/assets/audios/{file_name}_{st.session_state.language}_{file_id}.wav"
+            )
 
-        st.write("### Evaluation")
+            save_prompt_to_disk(
+                st.session_state.task.prompt[1:],
+                f"server/assets/transcriptions/{file_name}_{st.session_state.language}_{file_id}.json"
+            )
 
-        evaluation = evaluate_assistant_output(
-            st.session_state.task.prompt[2:], 
-            st.session_state.name.split(" ")[-1]
-        )
+            st.write("### Evaluation")
 
-        st.write(evaluation)
-        save_evaluation_to_disk(evaluation, st.session_state.language)
+            if not st.session_state.evaluation:
+                st.session_state.evaluation = evaluate_assistant_output(
+                    st.session_state.task.prompt[2:], 
+                    st.session_state.name.split(" ")[-1]
+                )
 
-        st.write("### End of the conversation")
-        st.write("Thank you for participating in this demo.")
-        
-        st.stop()
+            st.write(st.session_state.evaluation)
+            save_evaluation_to_disk(st.session_state.evaluation, st.session_state.language)
+
+            st.write("### End of the conversation")
+            st.write("Thank you for participating in this demo.")
+
+            st.session_state.save = False
+            st.stop()
 
     st.divider()
 
     if st.session_state.turn:
 
         context = {
-            "user_data": {
-                "name": st.session_state.name.split(" ")[0],
-            },
             "missing_data": "last name"
         }
 

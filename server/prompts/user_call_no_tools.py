@@ -38,10 +38,6 @@ In cases of spelling or number discrepancies, always confirm and verify with the
 
 The output should contain a single response message formatted as a continuation of your conversation, ending with a flag indicating whether the conversation needs to continue or not.
 
-# User Data
-
-{user_data}
-
 # What is missing
  
 {missing_data}

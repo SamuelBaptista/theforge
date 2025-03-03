@@ -18,7 +18,7 @@ st.header("Evaluation Results")
 evaluation_dir = "server/assets/evaluation"
 if not os.path.exists(evaluation_dir):
     os.makedirs(evaluation_dir)
-    st.info("No evaluation data found. Evaluation directory created.")
+    st.info("No evaluation data found.")
 else:
     # Get all JSON files from the evaluation directory
     evaluation_files = [f for f in os.listdir(evaluation_dir) if f.endswith('.json')]
@@ -40,118 +40,104 @@ else:
             if not evaluation_data:
                 st.info(f"No evaluation data available for {selected_language}.")
             else:
-                # Extract names and attempts for the chart
+                # Create a DataFrame from the evaluation data
+                df = pd.DataFrame(evaluation_data)
+                
+                # Get unique names
+                unique_names = df['name'].unique()
+                
+                for name in unique_names:
+                    # Filter data for this name
+                    name_data = df[df['name'] == name]
+                    
+                    # Create expanded data for this person
+                    expanded_data = []
+                    for _, row in name_data.iterrows():
+                        for attempt_num in range(1, row['attempts'] + 1):
+                            is_this_attempt_correct = row['correct'] and attempt_num == row['attempts']
+                            expanded_data.append({
+                                'Attempt_Number': attempt_num,
+                                'Correct': is_this_attempt_correct
+                            })
+                    
+                    # Convert to DataFrame and calculate success rates
+                    df_expanded = pd.DataFrame(expanded_data)
+                    success_by_attempts = df_expanded.groupby('Attempt_Number').agg({
+                        'Correct': ['count', 'sum']
+                    }).reset_index()
+                    
+                    success_by_attempts.columns = ['Attempts', 'Total', 'Correct']
+                    success_by_attempts['Success_Rate'] = (success_by_attempts['Correct'] / 
+                                                         success_by_attempts['Total'] * 100)
+
+                    # Create the bar chart
+                    fig = px.bar(
+                        success_by_attempts,
+                        x='Attempts',
+                        y='Success_Rate',
+                        text=success_by_attempts['Success_Rate'].round(1).astype(str) + '%',
+                        title=f"Success Rate by Attempt Number for {name}",
+                        labels={
+                            'Attempts': 'Number of attempts',
+                            'Success_Rate': 'Accuracy (%)',
+                        },
+                        height=400
+                    )
+
+                    # Customize the chart
+                    fig.update_traces(
+                        textposition='inside',
+                        width=0.7
+                    )
+                    
+                    fig.update_layout(
+                        yaxis=dict(
+                            range=[0, 100],
+                            ticksuffix='%'
+                        ),
+                        xaxis=dict(
+                            tickmode='linear',
+                            tick0=0,
+                            dtick=1
+                        ),
+                        showlegend=False,
+                        bargap=0.2
+                    )
+                    
+                    # Display the chart
+                    st.plotly_chart(fig, use_container_width=True)
+
+                st.divider()
+
+                # Extract names and attempts for the detailed breakdown
                 names = [entry.get('name', 'Unknown') for entry in evaluation_data]
                 attempts = [entry.get('attempts', 0) for entry in evaluation_data]
                 correct = [entry.get('correct', False) for entry in evaluation_data]
 
-                st.divider()
-                
-                # Display summary statistics with improved visuals
-                st.subheader("Summary Statistics")
-                
-                # Create a metrics container with custom styling
-                metrics_container = st.container()
-                with metrics_container:
-                    # Use 4 columns for better spacing
-                    col1, col2, col3, col4 = st.columns(4)
-                    
-                    # Calculate success rate as a percentage
-                    success_rate = (sum(correct) / len(evaluation_data) * 100) if evaluation_data else 0
-                    
-                    with col1:
-                        st.metric(
-                            "Total Participants", 
-                            len(evaluation_data),
-                            help="Number of people who attempted pronunciation"
-                        )
-                    with col2:
-                        st.metric(
-                            "Correct Pronunciations", 
-                            sum(correct),
-                            # delta=f"{success_rate:.1f}%" if success_rate > 0 else None,
-                            help="Number of participants who pronounced correctly"
-                        )
-                    with col3:
-                        avg_attempts = sum(attempts) / len(attempts) if attempts else 0
-                        st.metric(
-                            "Average Attempts", 
-                            f"{avg_attempts:.2f}",
-                            help="Average number of attempts per participant"
-                        )
-                    with col4:
-                        max_attempts = max(attempts) if attempts else 0
-                        st.metric(
-                            "Max Attempts",
-                            max_attempts,
-                            help="Maximum number of attempts by any participant"
-                        )          
-                
                 df = pd.DataFrame({
                     'Name': names,
-                    'Attempts': attempts,
-                    'Correct': correct
+                    'Total Attempts': attempts,
+                    'Correct': correct,
+                    'Wrong Attempts': [a-1 if c else a for a, c in zip(attempts, correct)],
+                    'Successful Attempts': [1 if c else 0 for c in correct]
                 })
-                
-                # Create color mapping based on correctness
-                color_discrete_map = {True: 'green', False: 'red'}
-                
-                # Create the bar chart
-                fig = px.bar(
-                    df, 
-                    x='Name', 
-                    y='Attempts',
-                    color='Correct',
-                    color_discrete_map=color_discrete_map,
-                    title=f"Evaluation Results for {selected_language}",
-                    labels={'Name': 'Name', 'Attempts': 'Number of Attempts'},
-                    height=400,
-                    barmode='group',  # Group bars instead of stacking them
-                )
 
-                fig.update_traces(marker_line_width=2, marker_line_color="white")                
-                
-                # Customize the chart
-                fig.update_layout(
-                    xaxis_title="Name",
-                    yaxis_title="Number of Attempts",
-                    yaxis=dict(
-                        tickmode='linear',
-                        tick0=0,
-                        dtick=1,
-                    ),                   
-                    legend_title="Correct Pronunciation"
+                st.subheader("Detailed Breakdown")
+
+                name = st.selectbox("Select a name:", df['Name'].unique())
+                df2 = df[df['Name'] == name].copy()
+
+                detailed_df = df2[['Name', 'Total Attempts', 'Wrong Attempts', 'Correct']].copy()
+                detailed_df['Status'] = detailed_df['Correct'].map({True: '✅ Correct', False: '❌ Incorrect'})
+                detailed_df = detailed_df.drop('Correct', axis=1)
+
+                st.dataframe(
+                    detailed_df,
+                    hide_index=True,
+                    use_container_width=True
                 )
-                
-                # Display the chart
-                st.plotly_chart(fig, use_container_width=True)
                 
         except FileNotFoundError:
             st.warning(f"Evaluation file for {selected_language} not found.")
         except json.JSONDecodeError:
             st.error(f"Error parsing the evaluation data for {selected_language}.")
-
-        st.divider()
-
-        df = pd.DataFrame({
-            'Name': names,
-            'Total Attempts': attempts,
-            'Correct': correct,
-            'Wrong Attempts': [a-1 if c else a for a, c in zip(attempts, correct)],
-            'Successful Attempts': [1 if c else 0 for c in correct]
-        })
-
-        st.subheader("Detailed Breakdown")
-
-        name = st.selectbox("Select a name:", df['Name'].unique())
-        df2 = df[df['Name'] == name].copy()
-
-        detailed_df = df2[['Name', 'Total Attempts', 'Wrong Attempts', 'Correct']].copy()
-        detailed_df['Status'] = detailed_df['Correct'].map({True: '✅ Correct', False: '❌ Incorrect'})
-        detailed_df = detailed_df.drop('Correct', axis=1)
-
-        st.dataframe(
-            detailed_df,
-            hide_index=True,
-            use_container_width=True
-        )

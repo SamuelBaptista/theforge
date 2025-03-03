@@ -70,8 +70,8 @@ else:
     # Create a dictionary mapping display names to filenames
     audio_options = {}
     for i, audio_file in enumerate(audio_files):
-        first_name, last_name, accent, _ = audio_file.rsplit('_', 3)
-        display_name = f"{i} - Name: {first_name} {last_name} - Accent: {accent}"
+        name, accent, _ = audio_file.rsplit('_', 2)
+        display_name = f"{i} - Name: {name} | Accent: {accent}"
         audio_options[display_name] = audio_file
     
     # Create a selectbox for the user to choose an audio file
