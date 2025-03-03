@@ -95,8 +95,11 @@ else:
             for message in transcription_text:
                 with st.chat_message(message['role']):
                     if message['role'] == "assistant":
-                        content = json.loads(message['content'])
-                        st.write(content['message'])
+                        try:
+                            content = json.loads(message['content'])
+                            st.write(content['message'])
+                        except json.JSONDecodeError:
+                            st.write(message['content'])
                     else:
                         st.write(message['content'])
     else:

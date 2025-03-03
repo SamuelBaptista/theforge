@@ -308,14 +308,13 @@ if cols[0].button("Run", use_container_width=True) or st.session_state.run:
         try:
             st.session_state.response = json.loads(response)
         except TypeError:
-            print(response)
             st.session_state.response = response
         except json.JSONDecodeError:
 
             st.session_state.response = {}
 
-            st.session_state.response['continue_chat'] = True
-            st.session_state.response['message'] = response
+            st.session_state.response['continue_chat'] = False if "false" in response else True
+            st.session_state.response['message'] = response.replace("\"message\":", "").replace("\"continue_chat\": false", "").replace("\"", "").strip()
 
         if not st.session_state.response['continue_chat']:
             voice = generate_voice(st.session_state.response['message'])
