@@ -11,7 +11,7 @@ if not st.session_state.get('authenticated', False):
     st.stop()
 
 st.set_page_config(
-    page_title="KIPUH - Saved Audios",
+    page_title="KHIPU - Saved Audios",
     layout="centered",
     initial_sidebar_state="auto"
 )
