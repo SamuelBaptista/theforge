@@ -21,7 +21,7 @@ if not st.session_state.get('authenticated', False):
     st.stop()
 
 st.set_page_config(
-    page_title="KIPUH - STT, Reasoning, TTS",
+    page_title="KHIPU - STT, Reasoning, TTS",
     layout="centered",
     initial_sidebar_state="auto"
 )
