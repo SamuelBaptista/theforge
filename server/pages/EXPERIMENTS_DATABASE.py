@@ -16,6 +16,9 @@ st.set_page_config(
     initial_sidebar_state="auto"
 )
 
+st.image("server/assets/images/arion_logo.png", use_container_width=True)
+st.divider()
+
 st.title("Saved Conversations")
 st.divider()
 

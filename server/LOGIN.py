@@ -10,6 +10,9 @@ st.set_page_config(
     layout="centered",
 )
 
+st.image("server/assets/images/arion_logo.png", use_container_width=True)
+st.divider()
+
 # Initialize authentication
 if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False

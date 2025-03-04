@@ -11,6 +11,9 @@ if not st.session_state.get('authenticated', False):
     st.warning("Please login at the login page")
     st.stop()
 
+st.image("server/assets/images/arion_logo.png", use_container_width=True)
+st.divider()
+
 # Add evaluation visualization section
 st.header("Evaluation Results")
 
