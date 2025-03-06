@@ -26,7 +26,7 @@ st.divider()
 def create_zip_of_all_files():
     audio_dir = "server/assets/audios"
     transcription_dir = "server/assets/transcriptions"
-    evaluation_dir = "server/assets/evaluations"
+    evaluation_dir = "server/assets/evaluation"
     
     # Create a BytesIO object to store the zip file
     zip_buffer = io.BytesIO()
