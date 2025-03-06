@@ -144,14 +144,6 @@ languages = [
     "Italian",
 ]
 
-cols = st.columns(2)
-
-with cols[0]:
-    name = st.selectbox("Select a name to test the tool.", names)
-
-with cols[1]:
-    language = st.selectbox("Select the your native language.", languages)
-
 # PAGE
 
 if "task" not in st.session_state:
@@ -227,15 +219,16 @@ if st.session_state.task.prompt:
             else:
                 st.write(message['content'])
 
-if cols[1].button("Reset", use_container_width=True, type='primary'):
+language = st.selectbox("Select your native language.", languages)
+if st.button("Reset", use_container_width=True, type='primary'):
     for key in st.session_state:
         if key == "authenticated":
             continue
         del st.session_state[key]
-
     st.rerun()
 
-if cols[0].button("Run", use_container_width=True) or st.session_state.run:
+name = st.selectbox("Select a name to test the tool.", names)
+if st.button("Run", use_container_width=True):
     st.session_state.run = True
 
     st.session_state.name = name
