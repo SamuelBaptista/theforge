@@ -198,14 +198,42 @@ if 'language' not in st.session_state:
 if 'evaluation' not in st.session_state:
     st.session_state.evaluation = None    
 
-# Modified UI section here
-language = st.selectbox("Select your native language", languages)
-st.button("Reset", use_container_width=True, type='primary', key='reset_btn')
-name = st.selectbox("Select a name to test the tool", names)
-st.button("Run", use_container_width=True, key='run_btn')
+language = st.selectbox("Select the your native language.", languages)
+
+if st.button("Reset", use_container_width=True, type='primary'):
+    for key in st.session_state:
+        if key == "authenticated":
+            continue
+        del st.session_state[key]
+
+    st.rerun()
+
+name = st.selectbox("Select a name to test the tool.", names)
+
+if st.button("Run", use_container_width=True):
+    st.session_state.run = True
+
+if st.session_state.task.prompt:
+
+    st.divider()
+    st.write("### Chat Transcription")  
+
+    for i, message in enumerate(st.session_state.task.prompt):
+        if i == 0:
+            continue
+
+        with st.chat_message(message['role']):
+            if message['role'] == "assistant":
+                try:
+                    content = json.loads(message['content'])
+                    st.write(content['message'])
+                except json.JSONDecodeError:
+                    st.write(message['content'])
+            else:
+                st.write(message['content'])
+
 
 if st.session_state.run:
-    st.session_state.run = True
     st.session_state.name = name
     st.session_state.language = language
 
