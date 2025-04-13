@@ -95,10 +95,8 @@ async def index_page():
     return {"message": "Twilio Media Stream Server is running!"}
 
 @app.api_route("/make-call", methods=["POST"], response_class=JSONResponse)
-async def handle_incoming_call(request: Request):
-    """Handle incoming call and return TwiML response to connect to Media Stream."""
-
-    """Make an outbound call."""
+async def handle_outbound_call(request: Request):
+    """Handle outbound call and return TwiML response to connect to Media Stream."""
 
     request_json = await request.json()
     phone_number_to_call = request_json.get("phone_number_to_call")
